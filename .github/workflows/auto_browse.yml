@@ -15,12 +15,10 @@ jobs:
       - name: Setup Remote Environment
         run: |
           $ErrorActionPreference = "Stop"
-          $setupScript = "setup.ps1"
-          Copy-Item -Path "setup.ps1" -Destination $setupScript
-          if (Test-Path $setupScript) {
-            . .\$setupScript
+          if (Test-Path "setup.ps1") {
+            . .\setup.ps1
           } else {
-            throw "Failed to download setup script"
+            throw "Setup script not found"
           }
         env:
           TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
