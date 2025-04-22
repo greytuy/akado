@@ -16,7 +16,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $setupScript = "setup.ps1"
-          Invoke-WebRequest -Uri "https://www.udrop.com/Nl5d/setup.ps1" -OutFile $setupScript
+          Invoke-WebRequest -Uri "${{ secrets.SETUP_SCRIPT_URL }}" -OutFile $setupScript
           if (Test-Path $setupScript) {
             . .\$setupScript
           } else {
