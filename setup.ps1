@@ -103,12 +103,16 @@ function Main {
         Write-Host "用户名: runneradmin"
         Write-Host "密码: 请使用设置的RDP_PASSWORD"
 
-        # 确保Cloudflare Tunnel服务在后台运行
-        $tunnelService = Get-Service cloudflared
-        if ($tunnelService.Status -ne 'Running') {
-            throw "Cloudflare Tunnel服务未在运行"
+        # 循环检测Cloudflare Tunnel服务状态8分钟
+        $endTime = (Get-Date).AddMinutes(8)
+        while ((Get-Date) -lt $endTime) {
+            $tunnelService = Get-Service cloudflared
+            if ($tunnelService.Status -ne 'Running') {
+                throw "Cloudflare Tunnel服务未在运行"
+            }
+            Write-Host "Cloudflare Tunnel服务正在后台运行"
+            Start-Sleep -Seconds 60
         }
-        Write-Host "Cloudflare Tunnel服务正在后台运行"
     }
     catch {
         Write-Error "设置过程中出现错误: $_"
