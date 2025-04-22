@@ -24,9 +24,86 @@ class BrowseController:
     async def initialize(self):
         """初始化浏览器和页面"""
         playwright = await async_playwright().start()
-        self.browser = await playwright.chromium.launch(headless=False)
+        
+        # 设置浏览器启动参数，尝试绕过Cloudflare检测
+        browser_args = [
+            '--disable-blink-features=AutomationControlled',
+            '--disable-gpu',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-renderer-backgrounding',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-ipc-flooding-protection',
+            '--disable-client-side-phishing-detection',
+            '--disable-features=IsolateOrigins,site-per-process,TranslateUI',
+            '--disable-site-isolation-trials'
+        ]
+        
+        self.browser = await playwright.chromium.launch(
+            headless=False,
+            args=browser_args
+        )
+        
         self.page = await self.browser.new_page()
         await self.page.set_viewport_size({"width": 1280, "height": 800})
+        
+        # 注入脚本以绕过webdriver检测
+        await self.page.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', {
+                get: () => undefined
+            });
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5]
+            });
+            Object.defineProperty(navigator, 'languages', {
+                get: () => ['zh-CN', 'zh', 'en']
+            });
+        """)
+        
+        # 设置默认超时时间
+        self.page.set_default_timeout(30000)
+        
+    async def check_cloudflare(self) -> bool:
+        """检查是否遇到Cloudflare验证"""
+        try:
+            cloudflare_element = await self.page.query_selector('iframe[title*="challenge"], #challenge-stage, #cf-challenge-running')
+            return cloudflare_element is not None
+        except Exception:
+            return False
+            
+    async def wait_for_cloudflare(self, max_retries: int = 3) -> bool:
+        """等待并处理Cloudflare验证"""
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                if await self.check_cloudflare():
+                    print(f'检测到Cloudflare验证，第{retry_count + 1}次尝试绕过...')
+                    # 等待一段时间，看是否能自动通过
+                    await asyncio.sleep(10)
+                    
+                    # 如果还存在验证，可能需要人工处理
+                    if await self.check_cloudflare():
+                        print('自动绕过失败，请手动完成验证后按回车继续...')
+                        input()
+                        await asyncio.sleep(2)
+                        
+                        # 验证完成后，检查页面是否正常
+                        if not await self.check_cloudflare():
+                            print('验证通过，继续执行...')
+                            return True
+                else:
+                    return True
+                    
+            except Exception as e:
+                print(f'处理Cloudflare验证时出错: {e}')
+                
+            retry_count += 1
+            await asyncio.sleep(2)
+            
+        return False
 
     async def close(self):
         """关闭浏览器"""
@@ -249,6 +326,11 @@ class BrowseController:
             # 首先访问首页
             await self.page.goto('https://linux.do')
             await asyncio.sleep(2)
+            
+            # 检查是否遇到Cloudflare验证
+            if not await self.wait_for_cloudflare():
+                print('无法绕过Cloudflare验证，程序退出')
+                return
 
             # 检查是否需要处理必读文章
             if not self.first_use_checked:
