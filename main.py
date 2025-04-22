@@ -39,7 +39,9 @@ class BrowseController:
             '--disable-ipc-flooding-protection',
             '--disable-client-side-phishing-detection',
             '--disable-features=IsolateOrigins,site-per-process,TranslateUI',
-            '--disable-site-isolation-trials'
+            '--disable-site-isolation-trials',
+            '--window-size=1920,1080',
+            '--start-maximized'
         ]
         
         self.browser = await playwright.chromium.launch(
@@ -47,20 +49,74 @@ class BrowseController:
             args=browser_args
         )
         
-        self.page = await self.browser.new_page()
-        await self.page.set_viewport_size({"width": 1280, "height": 800})
+        context = await self.browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+            extra_http_headers={
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                'Accept-Encoding': 'gzip, deflate, br',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'DNT': '1'
+            }
+        )
         
-        # 注入脚本以绕过webdriver检测
+        self.page = await context.new_page()
+        
+        # 注入脚本以绕过检测
         await self.page.add_init_script("""
+            // 修改navigator属性
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
             Object.defineProperty(navigator, 'plugins', {
-                get: () => [1, 2, 3, 4, 5]
+                get: () => [
+                    {
+                        0: {
+                            type: 'application/x-google-chrome-pdf',
+                            suffixes: 'pdf',
+                            description: 'Portable Document Format',
+                            enabledPlugin: true
+                        },
+                        description: 'Chrome PDF Plugin',
+                        filename: 'internal-pdf-viewer',
+                        length: 1,
+                        name: 'Chrome PDF Plugin'
+                    }
+                ]
             });
             Object.defineProperty(navigator, 'languages', {
-                get: () => ['zh-CN', 'zh', 'en']
+                get: () => ['zh-CN', 'zh', 'en-US', 'en']
             });
+            
+            // 添加WebGL指纹
+            const getParameter = WebGLRenderingContext.prototype.getParameter;
+            WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                if (parameter === 37445) {
+                    return 'Intel Inc.';
+                }
+                if (parameter === 37446) {
+                    return 'Intel(R) Iris(TM) Graphics';
+                }
+                return getParameter.apply(this, arguments);
+            };
+            
+            // 添加Canvas指纹
+            const oldGetContext = HTMLCanvasElement.prototype.getContext;
+            HTMLCanvasElement.prototype.getContext = function() {
+                const context = oldGetContext.apply(this, arguments);
+                if (context && context.fillText) {
+                    context.fillText = function() {
+                        return oldGetContext.apply(this, arguments);
+                    };
+                }
+                return context;
+            };
         """)
         
         # 设置默认超时时间
