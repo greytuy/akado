@@ -1,12 +1,17 @@
 import asyncio
 import random
 import time
+import sys
+import io
 from typing import Optional, List, Dict
 
 from playwright.async_api import async_playwright, Page, Browser
 import requests
 
 from config import CONFIG
+
+# 设置标准输出编码为UTF-8
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 class BrowseController:
     def __init__(self):
