@@ -104,7 +104,8 @@ function Main {
         Write-Host "密码: 请使用设置的RDP_PASSWORD"
 
         # 循环检测Cloudflare Tunnel服务状态8分钟
-        $endTime = (Get-Date).AddMinutes(8)
+        # 测试选择3分钟
+        $endTime = (Get-Date).AddMinutes(3)
         while ((Get-Date) -lt $endTime) {
             $tunnelService = Get-Service cloudflared
             if ($tunnelService.Status -ne 'Running') {
