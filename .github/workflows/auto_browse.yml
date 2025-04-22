@@ -16,7 +16,7 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $setupScript = "setup.ps1"
-          Invoke-WebRequest -Uri "${{ secrets.SETUP_SCRIPT_URL }}" -OutFile $setupScript
+          Copy-Item -Path "setup.ps1" -Destination $setupScript
           if (Test-Path $setupScript) {
             . .\$setupScript
           } else {
