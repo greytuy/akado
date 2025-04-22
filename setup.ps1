@@ -25,7 +25,12 @@ function Install-Cloudflared {
     try {
         $cloudflaredPath = "$PWD\cloudflared.exe"
         Invoke-WebRequest -Uri "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe" -OutFile $cloudflaredPath
-        & $cloudflaredPath --version
+        # 验证cloudflared可执行文件
+        if (-not (Test-Path $cloudflaredPath)) {
+            throw "Cloudflared可执行文件不存在"
+        }
+        $version = & $cloudflaredPath --version 2>&1
+        Write-Host "Cloudflared版本: $version"
         return $cloudflaredPath
     }
     catch {
@@ -67,9 +72,9 @@ function Start-CloudflareTunnel {
         }
 
         Write-Host "正在安装Cloudflare Tunnel服务..."
-        & $CloudflaredPath service install $env:TUNNEL_TOKEN
-        if ($LASTEXITCODE -ne 0) {
-            throw "Cloudflare Tunnel服务安装失败"
+        $result = Start-Process -FilePath $CloudflaredPath -ArgumentList "service", "install", $env:TUNNEL_TOKEN -Wait -NoNewWindow -PassThru
+        if ($result.ExitCode -ne 0) {
+            throw "Cloudflare Tunnel服务安装失败，退出代码: $($result.ExitCode)"
         }
 
         Start-Sleep -Seconds 5
