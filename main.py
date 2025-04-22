@@ -46,7 +46,17 @@ class BrowseController:
             '--disable-features=IsolateOrigins,site-per-process,TranslateUI',
             '--disable-site-isolation-trials',
             '--window-size=1920,1080',
-            '--start-maximized'
+            '--start-maximized',
+            '--disable-web-security',
+            '--disable-notifications',
+            '--disable-popup-blocking',
+            '--disable-sync',
+            '--disable-translate',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--no-first-run',
+            '--safebrowsing-disable-auto-update',
+            '--disable-extensions'
         ]
         
         self.browser = await playwright.chromium.launch(
@@ -122,6 +132,37 @@ class BrowseController:
                 }
                 return context;
             };
+            
+            // 添加更多反检测措施
+            Object.defineProperty(navigator, 'hardwareConcurrency', {
+                get: () => 4
+            });
+            Object.defineProperty(navigator, 'deviceMemory', {
+                get: () => 8
+            });
+            Object.defineProperty(navigator, 'maxTouchPoints', {
+                get: () => 0
+            });
+            
+            // 修改屏幕分辨率相关属性
+            Object.defineProperty(screen, 'width', {
+                get: () => 1920
+            });
+            Object.defineProperty(screen, 'height', {
+                get: () => 1080
+            });
+            Object.defineProperty(screen, 'availWidth', {
+                get: () => 1920
+            });
+            Object.defineProperty(screen, 'availHeight', {
+                get: () => 1080
+            });
+            Object.defineProperty(screen, 'colorDepth', {
+                get: () => 24
+            });
+            Object.defineProperty(screen, 'pixelDepth', {
+                get: () => 24
+            });
         """)
         
         # 设置默认超时时间
