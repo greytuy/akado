@@ -39,4 +39,4 @@ jobs:
         env:
           LINUX_DO_USERNAME: ${{ secrets.LINUX_DO_USERNAME }}
           LINUX_DO_PASSWORD: ${{ secrets.LINUX_DO_PASSWORD }}
-        run: python auto_browse.py
+        run: python main.py
