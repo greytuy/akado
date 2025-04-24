@@ -183,20 +183,99 @@ class BrowseController:
             try:
                 if await self.check_cloudflare():
                     print(f'检测到Cloudflare验证，第{retry_count + 1}次尝试绕过...')
-                    # 等待一段时间，看是否能自动通过
-                    await asyncio.sleep(10)
                     
-                    # 如果还存在验证，可能需要人工处理
-                    if await self.check_cloudflare():
-                        print('自动绕过失败，请手动完成验证后按回车继续...')
-                        input()
+                    # 显示选择菜单
+                    print('\n请选择验证方式：')
+                    print('1. 远程手动绕过 (需要您手动完成验证)')
+                    print('2. 自动尝试绕过')
+                    print(f'\n您有5分钟时间做出选择，超时将默认尝试自动绕过\n')
+                    
+                    # 设置5分钟超时
+                    choice = None
+                    timeout = 300  # 5分钟 = 300秒
+                    start_time = time.time()
+                    
+                    # 使用异步方式等待用户输入，带超时
+                    while time.time() - start_time < timeout and choice not in ['1', '2']:
+                        print(f'\r剩余选择时间: {int(timeout - (time.time() - start_time))}秒', end='')
+                        await asyncio.sleep(1)
+                        
+                        # 非阻塞方式检查是否有输入
+                        import msvcrt
+                        if msvcrt.kbhit():
+                            key = msvcrt.getch().decode('utf-8')
+                            if key in ['1', '2']:
+                                choice = key
+                                print()  # 换行
+                    
+                    print()  # 换行
+                    
+                    # 根据选择或超时默认值处理验证
+                    if choice == '1' or choice is None:
+                        if choice is None:
+                            print('\n选择超时，默认尝试自动绕过...')
+                            # 等待一段时间，看是否能自动通过
+                            await asyncio.sleep(10)
+                            
+                            # 如果自动绕过失败，切换到手动模式
+                            if await self.check_cloudflare():
+                                print('自动绕过失败，切换到手动模式...')
+                                print('请手动完成验证后按回车继续...')
+                                input()
+                        else:
+                            print('\n您选择了远程手动绕过，请手动完成验证后按回车继续...')
+                            input()
+                        
                         await asyncio.sleep(2)
                         
                         # 验证完成后，检查页面是否正常
                         if not await self.check_cloudflare():
-                            print('验证通过，继续执行...')
-                            return True
+                            print('验证通过，是否开始自动浏览？(y/n)')
+                            start_browse = input().strip().lower()
+                            if start_browse == 'y':
+                                print('开始自动浏览...')
+                                return True
+                            else:
+                                print('用户取消自动浏览，程序退出')
+                                return False
+                    elif choice == '2':
+                        print('\n您选择了自动尝试绕过，正在尝试...')
+                        # 等待一段时间，看是否能自动通过
+                        await asyncio.sleep(10)
+                        
+                        # 如果自动绕过失败，询问是否切换到手动模式
+                        if await self.check_cloudflare():
+                            print('自动绕过失败，是否切换到手动模式？(y/n)')
+                            switch_to_manual = input().strip().lower()
+                            if switch_to_manual == 'y':
+                                print('请手动完成验证后按回车继续...')
+                                input()
+                                await asyncio.sleep(2)
+                                
+                                # 验证完成后，检查页面是否正常
+                                if not await self.check_cloudflare():
+                                    print('验证通过，是否开始自动浏览？(y/n)')
+                                    start_browse = input().strip().lower()
+                                    if start_browse == 'y':
+                                        print('开始自动浏览...')
+                                        return True
+                                    else:
+                                        print('用户取消自动浏览，程序退出')
+                                        return False
+                            else:
+                                print('用户取消手动验证，尝试下一次自动绕过')
+                        else:
+                            # 自动绕过成功
+                            print('自动绕过成功，是否开始自动浏览？(y/n)')
+                            start_browse = input().strip().lower()
+                            if start_browse == 'y':
+                                print('开始自动浏览...')
+                                return True
+                            else:
+                                print('用户取消自动浏览，程序退出')
+                                return False
                 else:
+                    # 没有检测到Cloudflare验证，直接返回成功
                     return True
                     
             except Exception as e:
@@ -205,6 +284,7 @@ class BrowseController:
             retry_count += 1
             await asyncio.sleep(2)
             
+        print('达到最大重试次数，无法绕过Cloudflare验证')
         return False
 
     async def close(self):
@@ -423,16 +503,19 @@ class BrowseController:
         """运行浏览器自动化"""
         try:
             await self.initialize()
-            self.auto_running = True
 
             # 首先访问首页
             await self.page.goto('https://linux.do')
             await asyncio.sleep(2)
             
             # 检查是否遇到Cloudflare验证
-            if not await self.wait_for_cloudflare():
+            cloudflare_result = await self.wait_for_cloudflare()
+            if not cloudflare_result:
                 print('无法绕过Cloudflare验证，程序退出')
                 return
+            
+            # 设置自动运行标志
+            self.auto_running = True
 
             # 检查是否需要处理必读文章
             if not self.first_use_checked:
