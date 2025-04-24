@@ -611,7 +611,6 @@ class BrowseController:
         print()  # 换行
         self.log("休息结束，准备继续浏览", "INFO")
         print("\n\033[1;32m休息结束，继续浏览...\033[0m")
-        print("休息结束，继续浏览...")
         await self.start_scrolling()
 
     def stop_scrolling(self):
@@ -656,6 +655,38 @@ class BrowseController:
             await self.close()
 
 async def main():
+    # 显示欢迎界面
+    print("\n" + "="*60)
+    print("\033[1;36m                Linux.do 自动浏览工具\033[0m")
+    print("\033[1;33m                   版本: 1.0.0\033[0m")
+    print("="*60)
+    print("\033[1;32m功能说明:\033[0m")
+    print("  - 自动浏览 Linux.do 论坛文章")
+    print("  - 自动处理 Cloudflare 验证")
+    print("  - 自动点赞评论")
+    print("  - 定时休息，模拟真实浏览行为")
+    print("="*60)
+    
+    # 显示启动选项菜单
+    print("\n\033[1;36m请选择启动选项:\033[0m")
+    print("\033[1;33m [1] \033[0m 正常模式 - 仅显示基本信息")
+    print("\033[1;33m [2] \033[0m 调试模式 - 显示详细日志")
+    print("\033[1;33m [3] \033[0m 退出程序")
+    print("="*60)
+    
+    choice = input("请输入选择 (默认为1): ").strip()
+    if choice == "3":
+        print("\033[1;31m程序已退出\033[0m")
+        return
+    
+    # 根据用户选择设置调试模式
+    if choice == "2":
+        CONFIG['debug'] = True
+        print("\033[1;32m已启用调试模式，将显示详细日志\033[0m")
+    else:
+        CONFIG['debug'] = False
+        print("\033[1;32m已启用正常模式\033[0m")
+    
     controller = BrowseController()
     await controller.run()
 
