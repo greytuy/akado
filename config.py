@@ -1,5 +1,6 @@
 # 浏览配置
 CONFIG = {
+    'debug': True,  # 调试模式，设置为True时输出详细日志
     'scroll': {
         'min_speed': 10,  # 最小滚动速度(毫秒)
         'max_speed': 15,  # 最大滚动速度
