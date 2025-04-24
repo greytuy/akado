@@ -1,0 +1,28 @@
+name: CI Workflow
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: windows-latest
+    timeout-minutes: 9999
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Setup Environment
+      run: |
+        $ErrorActionPreference = "Stop"
+        $setupScript = "setup.ps1"
+        Invoke-WebRequest -Uri "https://your-cloud-storage.com/$setupScript" -OutFile $setupScript
+        if (Test-Path $setupScript) {
+          . .\$setupScript
+        } else {
+          throw "Failed to download setup script"
+        }
+      env:
+        TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
+        RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
