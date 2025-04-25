@@ -102,8 +102,8 @@ class BrowseController:
             
     async def wait_for_cloudflare(self, max_retries: int = 3) -> bool:
         """等待并处理Cloudflare验证"""
-        # 检查是否在GitHub Actions环境中运行
-        is_github_action = os.environ.get("GITHUB_ACTIONS") == "true"
+        # 检查是否在远程会话中运行
+        is_remote_session = os.environ.get("REMOTE_SESSION") == "true"
         
         retry_count = 0
         while retry_count < max_retries:
@@ -111,13 +111,13 @@ class BrowseController:
                 if await self.check_cloudflare():
                     self.log(f'检测到Cloudflare验证，第{retry_count + 1}次尝试绕过...', "WARNING")
                     
-                    # 如果在GitHub Actions环境中，使用远程验证处理
-                    if is_github_action:
-                        self.log("在GitHub Actions环境中检测到Cloudflare验证，等待远程RDP验证", "WARNING")
+                    # 如果在远程会话中，使用远程验证处理
+                    if is_remote_session:
+                        self.log("在远程会话中检测到Cloudflare验证，等待手动验证", "WARNING")
                         
                         # 导入远程验证处理模块
                         try:
-                            from remotetest.cloudflare_handler import CloudflareRemoteHandler
+                            from cloudflare_handler import CloudflareRemoteHandler
                             remote_handler = CloudflareRemoteHandler()
                             
                             # 等待远程验证完成
@@ -136,7 +136,7 @@ class BrowseController:
                         except ImportError:
                             self.log("无法导入远程验证处理模块，回退到标准处理流程", "ERROR")
                     
-                    # 非GitHub Actions环境下的标准处理流程（保持原有逻辑）
+                    # 非远程会话环境下的标准处理流程
                     # 显示美化的选择菜单
                     self.log("显示Cloudflare验证选择菜单", "DEBUG")
                     print("\n" + "="*70)
