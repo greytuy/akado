@@ -687,7 +687,9 @@ class BrowseController:
         print("\033[1;32m└─────────────────────────────────────────────────────────┘\033[0m")
         
         # 设置5分钟倒计时
-        manual_time = 5 * 60  # 5分钟 = 300秒
+        # manual_time = 5 * 60  # 5分钟 = 300秒
+        manual_time = 3 * 60  # 5分钟太长，改为3分钟
+
         start_time = time.time()
         
         # 显示进度条
