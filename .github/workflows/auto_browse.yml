@@ -34,7 +34,18 @@ jobs:
         env:
           TUNNEL_TOKEN: ${{ secrets.TUNNEL_TOKEN }}
           RDP_PASSWORD: ${{ secrets.RDP_PASSWORD }}
+      
+      - name: Keep Alive
+        run: |
+          Write-Host "远程桌面连接信息："
+          Write-Host "用户名: runneradmin"
+          Write-Host "密码: 请使用在GitHub Secrets中设置的RDP_PASSWORD"
+          Write-Host "保持连接活跃中..."
+          while($true) { Start-Sleep -Seconds 60 }
           
+
+
+
       - name: Run auto browse script
         env:
           LINUX_DO_USERNAME: ${{ secrets.LINUX_DO_USERNAME }}
