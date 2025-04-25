@@ -4,6 +4,15 @@ on:
   schedule:
     - cron: '0 */12 * * *'  # 每12小时运行一次
   workflow_dispatch:  # 允许手动触发
+    inputs:
+      debug:
+        description: '启用远程调试模式'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   browse:
@@ -22,9 +31,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           playwright install chromium --with-deps
+      
+      # 添加远程调试支持
+      - name: Setup tmate session for remote debugging
+        uses: mxschmitt/action-tmate@v3
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.debug == 'true' }}
+        with:
+          limit-access-to-actor: true
           
       - name: Run simple auto browse script
         env:
           LINUX_DO_USERNAME: ${{ secrets.LINUX_DO_USERNAME }}
           LINUX_DO_PASSWORD: ${{ secrets.LINUX_DO_PASSWORD }}
+          PLAYWRIGHT_BROWSERS_PATH: "0"  # 强制在本地安装浏览器
         run: python simple_browse.py
