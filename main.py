@@ -4,6 +4,7 @@ import time
 import sys
 import io
 from typing import Optional, List, Dict
+import os
 
 from playwright.async_api import async_playwright, Page, Browser
 import requests
@@ -101,12 +102,41 @@ class BrowseController:
             
     async def wait_for_cloudflare(self, max_retries: int = 3) -> bool:
         """等待并处理Cloudflare验证"""
+        # 检查是否在GitHub Actions环境中运行
+        is_github_action = os.environ.get("GITHUB_ACTIONS") == "true"
+        
         retry_count = 0
         while retry_count < max_retries:
             try:
                 if await self.check_cloudflare():
                     self.log(f'检测到Cloudflare验证，第{retry_count + 1}次尝试绕过...', "WARNING")
                     
+                    # 如果在GitHub Actions环境中，使用远程验证处理
+                    if is_github_action:
+                        self.log("在GitHub Actions环境中检测到Cloudflare验证，等待远程RDP验证", "WARNING")
+                        
+                        # 导入远程验证处理模块
+                        try:
+                            from remotetest.cloudflare_handler import CloudflareRemoteHandler
+                            remote_handler = CloudflareRemoteHandler()
+                            
+                            # 等待远程验证完成
+                            verification_success = await remote_handler.wait_for_verification()
+                            if verification_success:
+                                self.log("远程验证成功完成", "INFO")
+                                # 等待页面加载
+                                await asyncio.sleep(3)
+                                if not await self.check_cloudflare():
+                                    return True
+                                else:
+                                    self.log("验证后仍检测到Cloudflare验证，继续尝试", "WARNING")
+                            else:
+                                self.log("远程验证超时或失败", "ERROR")
+                                return False
+                        except ImportError:
+                            self.log("无法导入远程验证处理模块，回退到标准处理流程", "ERROR")
+                    
+                    # 非GitHub Actions环境下的标准处理流程（保持原有逻辑）
                     # 显示美化的选择菜单
                     self.log("显示Cloudflare验证选择菜单", "DEBUG")
                     print("\n" + "="*70)
