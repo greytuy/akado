@@ -1,8 +1,8 @@
 name: Auto Browse Linux.do with Remote Debug
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # 每天 UTC 00:00 运行
+  # schedule:
+  #   - cron: '0 0 * * *'  # 每天 UTC 00:00 运行
   workflow_dispatch:  # 允许手动触发
 
 jobs:
