@@ -668,55 +668,79 @@ class BrowseController:
             await self.close()
 
     async def login_with_manual_interaction(self):
-        """允许用户手动登录并操作5分钟"""
+        """允许用户手动登录并操作"""
         self.log("进入登录延时挂起状态，等待用户手动操作", "INFO")
         
-        # 显示美化的登录提示
+        # 显示简化的登录提示
         print("\n" + "="*70)
-        print("\033[1;36m╔════════════════════════════════════════════════════════════╗\033[0m")
-        print("\033[1;36m║                                                            ║\033[0m")
-        print("\033[1;36m║              \033[1;33m请在5分钟内完成登录操作\033[1;36m                 ║\033[0m")
-        print("\033[1;36m║                                                            ║\033[0m")
-        print("\033[1;36m╚════════════════════════════════════════════════════════════╝\033[0m")
+        print("\033[1;36m请完成Linux.do网站登录，登录完成后程序将自动继续\033[0m")
         print("="*70)
         
-        print("\033[1;32m┌─ 操作说明 ───────────────────────────────────────────────┐\033[0m")
-        print("\033[1;32m│\033[0m  1. 请点击网页中的登录按钮，手动完成登录                   \033[1;32m│\033[0m")
-        print("\033[1;32m│\033[0m  2. 登录后您可以自由操作页面进行一些交互                   \033[1;32m│\033[0m")
-        print("\033[1;32m│\033[0m  3. 5分钟后系统将继续自动操作                             \033[1;32m│\033[0m")
-        print("\033[1;32m└─────────────────────────────────────────────────────────┘\033[0m")
-        
-        # 设置5分钟倒计时
-        # manual_time = 5 * 60  # 5分钟 = 300秒
-        manual_time = 3 * 60  # 5分钟太长，改为3分钟
-
+        # 检查是否已登录的逻辑
+        manual_time = 180  # 3分钟
+        check_interval = 10  # 每10秒检查一次
         start_time = time.time()
         
-        # 显示进度条
-        bar_length = 40
         try:
             while time.time() - start_time < manual_time:
+                # 使用新的检测登录状态方法
+                if await self.check_login_status():
+                    self.log("检测到已成功登录，继续自动浏览", "INFO")
+                    print("\n\033[1;32m已检测到成功登录，继续自动浏览\033[0m")
+                    return
+                
+                # 显示简单的等待消息，避免进度条造成的阻塞
                 remaining = int(manual_time - (time.time() - start_time))
-                minutes = remaining // 60
-                seconds = remaining % 60
+                print(f"\r等待登录，剩余时间：{remaining}秒", end="")
                 
-                # 计算进度条
-                elapsed = time.time() - start_time
-                progress = min(1.0, elapsed / manual_time)
-                bar_filled = int(bar_length * progress)
-                bar_empty = bar_length - bar_filled
-                
-                # 显示彩色进度条和倒计时
-                print(f"\r\033[1;34m手动操作倒计时: {minutes:02d}:{seconds:02d} [\033[1;32m{'█' * bar_filled}\033[1;30m{'░' * bar_empty}\033[1;34m] {int(progress*100)}%\033[0m", end="")
-                
-                # 每秒更新一次
-                await asyncio.sleep(1)
+                # 短暂等待后再检查
+                await asyncio.sleep(check_interval)
         except KeyboardInterrupt:
             # 用户可以按Ctrl+C跳过等待
             print("\n\033[1;33m用户手动跳过等待\033[0m")
         
-        print("\n\033[1;32m手动操作时间结束，恢复自动浏览\033[0m")
-        self.log("手动操作时间结束，恢复自动浏览", "INFO")
+        # 最后再检查一次登录状态
+        if await self.check_login_status():
+            self.log("检测到已成功登录，继续自动浏览", "INFO")
+            print("\n\033[1;32m已检测到成功登录，继续自动浏览\033[0m")
+            return
+            
+        print("\n\033[1;32m登录等待时间结束，恢复自动浏览\033[0m")
+        self.log("登录等待时间结束，恢复自动浏览", "INFO")
+
+    async def check_login_status(self) -> bool:
+        """检查是否已登录，通过检测登录按钮或用户头像"""
+        try:
+            # 检查是否存在登录按钮
+            login_button = await self.page.query_selector('button.login-button, button.btn-primary.login-button')
+            if login_button and await login_button.is_visible():
+                self.log("检测到登录按钮，用户未登录", "DEBUG")
+                return False
+                
+            # 检查是否存在用户头像（登录状态）
+            user_avatar = await self.page.query_selector('img.avatar[title*="个人资料"], .avatar-flair')
+            if user_avatar and await user_avatar.is_visible():
+                self.log("检测到用户头像，用户已登录", "DEBUG")
+                return True
+                
+            # 检查URL
+            current_url = self.page.url
+            if 'login' in current_url or 'sign-in' in current_url:
+                self.log("当前在登录页面，用户未登录", "DEBUG")
+                return False
+                
+            # 如果以上检查都未明确返回结果，尝试检查其他页面元素
+            header_user_menu = await self.page.query_selector('.header-dropdown-toggle .user-menu-avatar, .current-user')
+            if header_user_menu:
+                self.log("检测到用户菜单，用户已登录", "DEBUG")
+                return True
+                
+            # 默认情况
+            self.log("无法确定登录状态，假定未登录", "DEBUG")
+            return False
+        except Exception as e:
+            self.log(f"检查登录状态时出错: {e}", "ERROR")
+            return False
 
 async def main():
     # 显示美化的欢迎界面
