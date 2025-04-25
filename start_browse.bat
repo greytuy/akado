@@ -1,18 +1,18 @@
 @echo off
 echo ===================================
-echo   Linux.do 自动浏览工具启动程序
+echo   Linux.do Auto Browsing Tool
 echo ===================================
 echo.
-echo 正在启动自动浏览程序...
-echo 如果遇到Cloudflare验证，请手动完成验证后运行桌面上的verify_complete.bat
+echo Starting auto browsing program...
+echo If you encounter Cloudflare verification, please complete it manually and then run verify_complete.bat on the desktop
 echo.
 
-rem 设置环境变量标记为远程会话
+rem Set environment variable flag for remote session
 set REMOTE_SESSION=true
 
-rem 启动主程序
+rem Start main program
 python main.py
 
 echo.
-echo 程序已结束运行，按任意键退出
+echo Program has finished running, press any key to exit
 pause > nul
