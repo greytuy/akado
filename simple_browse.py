@@ -110,8 +110,8 @@ class SimpleBrowseController:
             # 点击登录按钮
             await self.page.click(SIMPLE_CONFIG['login']['login_button'])
             
-            # 等待登录完成
-            await asyncio.sleep(5)
+            # 等待登录完成，增加延时
+            await asyncio.sleep(10)
             
             # 检查是否登录成功
             current_url = self.page.url
@@ -119,7 +119,20 @@ class SimpleBrowseController:
                 self.log("登录成功", "INFO")
                 return True
             else:
-                self.log("登录失败", "ERROR")
+                self.log("登录失败，等待5分钟以便人工干预", "WARNING")
+                # 等待5分钟，允许人工干预登录
+                self.log("请在5分钟内手动完成登录操作", "INFO")
+                for i in range(5):
+                    self.log(f"等待人工干预: 还剩 {5-i} 分钟", "INFO")
+                    await asyncio.sleep(60)  # 等待1分钟
+                    
+                    # 再次检查是否已登录
+                    current_url = self.page.url
+                    if 'login' not in current_url:
+                        self.log("检测到已成功登录", "INFO")
+                        return True
+                
+                self.log("等待超时，登录失败", "ERROR")
                 return False
                 
         except Exception as e:
