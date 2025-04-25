@@ -1,4 +1,4 @@
-name: Simple Auto Browse Linux.do
+name: Auto Simple Browse Linux.do
 
 on:
   schedule:
@@ -31,7 +31,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           sudo apt-get update
-          sudo apt-get install -y libasound2t64
+          sudo apt-get install -y xvfb
           playwright install chromium --with-deps
       
       # 添加远程调试支持
@@ -41,9 +41,13 @@ jobs:
         with:
           limit-access-to-actor: true
           
-      - name: Run simple auto browse script
+      - name: Run auto simple browser script
         env:
           LINUX_DO_USERNAME: ${{ secrets.LINUX_DO_USERNAME }}
           LINUX_DO_PASSWORD: ${{ secrets.LINUX_DO_PASSWORD }}
           PLAYWRIGHT_BROWSERS_PATH: "0"  # 强制在本地安装浏览器
-        run: python simple_browse.py
+          DISPLAY: ":1"
+        run: |
+          # 启动虚拟显示以支持有头浏览器模式
+          Xvfb :1 -screen 0 1280x800x24 &
+          python auto_simple.py
