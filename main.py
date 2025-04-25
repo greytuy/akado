@@ -208,7 +208,7 @@ class BrowseController:
                         
                         # 验证完成后，检查页面是否正常
                         if not await self.check_cloudflare():
-                            self.log('验证通过，询问用户是否开始自动浏览', "INFO")
+                            self.log('验证通过，直接开始自动浏览', "INFO")
                             if self.debug:
                                 self.log('页面验证状态: 已通过', "DEBUG")
                                 
@@ -221,22 +221,8 @@ class BrowseController:
                             print('\033[1;32m╚════════════════════════════════════════════════════════════╝\033[0m')
                             print('='*70)
                             
-                            print('\033[1;35m┌─ 请选择下一步操作 ─────────────────────────────────────────┐\033[0m')
-                            print('\033[1;35m│\033[0m                                                           \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m  \033[1;33m[Y]\033[0m - 开始自动浏览                                   \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m  \033[1;33m[N]\033[0m - 退出程序                                       \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m                                                           \033[1;35m│\033[0m')
-                            print('\033[1;35m└─────────────────────────────────────────────────────────┘\033[0m')
-                            
-                            start_browse = input('\n\033[1;37m请输入选择 (y/n): \033[0m').strip().lower()
-                            if start_browse == 'y':
-                                self.log('用户选择开始自动浏览', "INFO")
-                                print('\n\033[1;32m开始自动浏览...\033[0m')
-                                return True
-                            else:
-                                self.log('用户取消自动浏览，程序退出', "WARNING")
-                                print('\n\033[1;31m用户取消自动浏览，程序退出\033[0m')
-                                return False
+                            print('\n\033[1;32m开始自动浏览...\033[0m')
+                            return True
                     elif choice == '2':
                         self.log('用户选择了自动尝试绕过', "INFO")
                         print('\n\033[1;36m您选择了自动尝试绕过，正在尝试...\033[0m')
@@ -264,27 +250,15 @@ class BrowseController:
                                 
                                 # 验证完成后，检查页面是否正常
                                 if not await self.check_cloudflare():
-                                    self.log('验证通过，询问用户是否开始自动浏览', "INFO")
-                                    print('\n' + '='*50)
-                                    print('\033[1;32m验证通过！是否开始自动浏览？\033[0m')
-                                    print('\033[1;33m[Y]\033[0m - 开始自动浏览')
-                                    print('\033[1;33m[N]\033[0m - 退出程序')
-                                    print('='*50)
-                                    start_browse = input('请输入选择 (y/n): ').strip().lower()
-                                    if start_browse == 'y':
-                                        self.log('用户选择开始自动浏览', "INFO")
-                                        print('\n\033[1;32m开始自动浏览...\033[0m')
-                                        return True
-                                    else:
-                                        self.log('用户取消自动浏览，程序退出', "WARNING")
-                                        print('\n\033[1;31m用户取消自动浏览，程序退出\033[0m')
-                                        return False
+                                    self.log('验证通过，直接开始自动浏览', "INFO")
+                                    print('\n\033[1;32m验证通过！开始自动浏览...\033[0m')
+                                    return True
                             else:
                                 self.log('用户取消手动验证，尝试下一次自动绕过', "INFO")
                                 print('\n\033[1;33m用户取消手动验证，尝试下一次自动绕过\033[0m')
                         else:
                             # 自动绕过成功
-                            self.log('自动绕过成功，询问用户是否开始自动浏览', "INFO")
+                            self.log('自动绕过成功，直接开始自动浏览', "INFO")
                             if self.debug:
                                 self.log('自动绕过详情: Cloudflare验证已自动完成', "DEBUG")
                                 
@@ -297,22 +271,8 @@ class BrowseController:
                             print('\033[1;32m╚════════════════════════════════════════════════════════════╝\033[0m')
                             print('='*70)
                             
-                            print('\033[1;35m┌─ 请选择下一步操作 ─────────────────────────────────────────┐\033[0m')
-                            print('\033[1;35m│\033[0m                                                           \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m  \033[1;33m[Y]\033[0m - 开始自动浏览                                   \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m  \033[1;33m[N]\033[0m - 退出程序                                       \033[1;35m│\033[0m')
-                            print('\033[1;35m│\033[0m                                                           \033[1;35m│\033[0m')
-                            print('\033[1;35m└─────────────────────────────────────────────────────────┘\033[0m')
-                            
-                            start_browse = input('\n\033[1;37m请输入选择 (y/n): \033[0m').strip().lower()
-                            if start_browse == 'y':
-                                self.log('用户选择开始自动浏览', "INFO")
-                                print('\n\033[1;32m开始自动浏览...\033[0m')
-                                return True
-                            else:
-                                self.log('用户取消自动浏览，程序退出', "WARNING")
-                                print('\n\033[1;31m用户取消自动浏览，程序退出\033[0m')
-                                return False
+                            print('\n\033[1;32m开始自动浏览...\033[0m')
+                            return True
                 else:
                     # 没有检测到Cloudflare验证，直接返回成功
                     self.log('没有检测到Cloudflare验证，直接返回成功', "DEBUG")
