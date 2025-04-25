@@ -51,33 +51,12 @@ class BrowseController:
         self.log("开始初始化浏览器和页面", "INFO")
         playwright = await async_playwright().start()
         
-        # 设置浏览器启动参数，尝试绕过Cloudflare检测
+        # 设置基本的浏览器启动参数
         browser_args = [
             '--disable-blink-features=AutomationControlled',
-            '--disable-gpu',
             '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-renderer-backgrounding',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-ipc-flooding-protection',
-            '--disable-client-side-phishing-detection',
-            '--disable-features=IsolateOrigins,site-per-process,TranslateUI',
-            '--disable-site-isolation-trials',
             '--window-size=1920,1080',
-            '--start-maximized',
-            '--disable-web-security',
-            '--disable-notifications',
-            '--disable-popup-blocking',
-            '--disable-sync',
-            '--disable-translate',
-            '--metrics-recording-only',
-            '--mute-audio',
-            '--no-first-run',
-            '--safebrowsing-disable-auto-update',
-            '--disable-extensions'
+            '--start-maximized'
         ]
         
         self.browser = await playwright.chromium.launch(
@@ -87,102 +66,17 @@ class BrowseController:
         
         context = await self.browser.new_context(
             viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-            extra_http_headers={
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'DNT': '1'
-            }
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
         )
         
         self.page = await context.new_page()
         
-        # 注入脚本以绕过检测
+        # 使用CDP方法修改属性 - 这是主要的解决方案
+        self.log("使用CDP修改navigator属性", "INFO")
         await self.page.add_init_script("""
-            // 修改navigator属性
+            // 使用CDP修改navigator.webdriver属性
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
-            });
-            Object.defineProperty(navigator, 'plugins', {
-                get: () => [
-                    {
-                        0: {
-                            type: 'application/x-google-chrome-pdf',
-                            suffixes: 'pdf',
-                            description: 'Portable Document Format',
-                            enabledPlugin: true
-                        },
-                        description: 'Chrome PDF Plugin',
-                        filename: 'internal-pdf-viewer',
-                        length: 1,
-                        name: 'Chrome PDF Plugin'
-                    }
-                ]
-            });
-            Object.defineProperty(navigator, 'languages', {
-                get: () => ['zh-CN', 'zh', 'en-US', 'en']
-            });
-            
-            // 添加WebGL指纹
-            const getParameter = WebGLRenderingContext.prototype.getParameter;
-            WebGLRenderingContext.prototype.getParameter = function(parameter) {
-                if (parameter === 37445) {
-                    return 'Intel Inc.';
-                }
-                if (parameter === 37446) {
-                    return 'Intel(R) Iris(TM) Graphics';
-                }
-                return getParameter.apply(this, arguments);
-            };
-            
-            // 添加Canvas指纹
-            const oldGetContext = HTMLCanvasElement.prototype.getContext;
-            HTMLCanvasElement.prototype.getContext = function() {
-                const context = oldGetContext.apply(this, arguments);
-                if (context && context.fillText) {
-                    context.fillText = function() {
-                        return oldGetContext.apply(this, arguments);
-                    };
-                }
-                return context;
-            };
-            
-            // 添加更多反检测措施
-            Object.defineProperty(navigator, 'hardwareConcurrency', {
-                get: () => 4
-            });
-            Object.defineProperty(navigator, 'deviceMemory', {
-                get: () => 8
-            });
-            Object.defineProperty(navigator, 'maxTouchPoints', {
-                get: () => 0
-            });
-            
-            // 修改屏幕分辨率相关属性
-            Object.defineProperty(screen, 'width', {
-                get: () => 1920
-            });
-            Object.defineProperty(screen, 'height', {
-                get: () => 1080
-            });
-            Object.defineProperty(screen, 'availWidth', {
-                get: () => 1920
-            });
-            Object.defineProperty(screen, 'availHeight', {
-                get: () => 1080
-            });
-            Object.defineProperty(screen, 'colorDepth', {
-                get: () => 24
-            });
-            Object.defineProperty(screen, 'pixelDepth', {
-                get: () => 24
             });
         """)
         
@@ -190,7 +84,7 @@ class BrowseController:
         self.page.set_default_timeout(30000)
         self.log("浏览器和页面初始化完成", "INFO")
         if self.debug:
-            self.log("浏览器参数详情：" + str(browser_args), "DEBUG")
+            self.log("CDP属性修改已应用", "DEBUG")
         
     async def check_cloudflare(self) -> bool:
         """检查是否遇到Cloudflare验证"""
@@ -587,6 +481,53 @@ class BrowseController:
             print(f"\033[1;33m不在选中的文章页面，正在导航到必读文章...\033[0m")
             await self.page.goto(self.selected_post['url'])
 
+    async def perform_random_scroll(self):
+        """执行带有随机停顿时间的滚动"""
+        self.log("执行随机滚动操作", "DEBUG")
+        
+        # 随机滚动距离
+        distance = random.randint(CONFIG['scroll']['min_distance'], CONFIG['scroll']['max_distance'])
+        
+        # 随机滚动速度
+        speed = random.randint(CONFIG['scroll']['min_speed'], CONFIG['scroll']['max_speed'])
+        
+        # 随机决定是否在滚动中间停顿
+        should_pause = random.random() < 0.3  # 30%概率停顿
+        
+        # 执行滚动
+        if should_pause:
+            # 将滚动分成两半，中间停顿
+            half_distance = distance / 2
+            await self.page.evaluate(f'window.scrollBy(0, {half_distance})')
+            
+            # 随机停顿时间 (500ms - 2000ms)
+            pause_time = random.randint(500, 2000)
+            self.log(f"滚动停顿 {pause_time}ms", "DEBUG")
+            await asyncio.sleep(pause_time / 1000)
+            
+            # 继续滚动
+            await self.page.evaluate(f'window.scrollBy(0, {half_distance})')
+        else:
+            # 一次性滚动
+            await self.page.evaluate(f'window.scrollBy(0, {distance})')
+        
+        # 滚动后等待
+        await asyncio.sleep(speed / 1000)
+        
+        # 偶尔模拟鼠标悬停在内容上
+        if random.random() < 0.15:  # 15%的概率
+            try:
+                # 寻找内容元素进行悬停
+                content_elements = await self.page.query_selector_all('article, .post, .topic-body, p, h1, h2, h3, a')
+                if content_elements:
+                    random_element = random.choice(content_elements)
+                    await random_element.hover()
+                    hover_time = random.randint(800, 3000)
+                    self.log(f"悬停在内容元素上 {hover_time}ms", "DEBUG")
+                    await asyncio.sleep(hover_time / 1000)
+            except Exception as e:
+                self.log(f"模拟悬停时出错: {e}", "DEBUG")
+
     async def start_scrolling(self):
         """开始滚动浏览"""
         if self.is_scrolling:
@@ -598,13 +539,10 @@ class BrowseController:
         self.last_action_time = time.time() * 1000
 
         while self.is_scrolling:
-            speed = random.randint(CONFIG['scroll']['min_speed'], CONFIG['scroll']['max_speed'])
-            distance = random.randint(CONFIG['scroll']['min_distance'], CONFIG['scroll']['max_distance'])
-            scroll_step = distance * 2.5
-
-            # 执行滚动
-            await self.page.evaluate(f'window.scrollBy(0, {scroll_step})')
-
+            # 使用新的随机滚动方法
+            await self.perform_random_scroll()
+            
+            # 检查是否达到页面底部
             if await self.is_near_bottom():
                 await asyncio.sleep(0.8)
 
@@ -614,7 +552,6 @@ class BrowseController:
                     await self.navigate_next_topic()
                     break
 
-            await asyncio.sleep(speed / 1000)  # 转换为秒
             await self.accumulate_time()
 
             # 随机快速滚动
@@ -714,6 +651,10 @@ class BrowseController:
             
             # 设置自动运行标志
             self.auto_running = True
+            
+            # 启动登录延时挂起功能，允许用户手动登录操作5分钟
+            self.log("启动登录延时挂起功能，请手动完成登录", "INFO")
+            await self.login_with_manual_interaction()
 
             # 检查是否需要处理必读文章
             if not self.first_use_checked:
@@ -730,8 +671,60 @@ class BrowseController:
 
         except Exception as e:
             print(f"运行出错: {e}")
+            if self.debug:
+                import traceback
+                self.log(f"错误详情: {traceback.format_exc()}", "DEBUG")
         finally:
             await self.close()
+
+    async def login_with_manual_interaction(self):
+        """允许用户手动登录并操作5分钟"""
+        self.log("进入登录延时挂起状态，等待用户手动操作", "INFO")
+        
+        # 显示美化的登录提示
+        print("\n" + "="*70)
+        print("\033[1;36m╔════════════════════════════════════════════════════════════╗\033[0m")
+        print("\033[1;36m║                                                            ║\033[0m")
+        print("\033[1;36m║              \033[1;33m请在5分钟内完成登录操作\033[1;36m                 ║\033[0m")
+        print("\033[1;36m║                                                            ║\033[0m")
+        print("\033[1;36m╚════════════════════════════════════════════════════════════╝\033[0m")
+        print("="*70)
+        
+        print("\033[1;32m┌─ 操作说明 ───────────────────────────────────────────────┐\033[0m")
+        print("\033[1;32m│\033[0m  1. 请点击网页中的登录按钮，手动完成登录                   \033[1;32m│\033[0m")
+        print("\033[1;32m│\033[0m  2. 登录后您可以自由操作页面进行一些交互                   \033[1;32m│\033[0m")
+        print("\033[1;32m│\033[0m  3. 5分钟后系统将继续自动操作                             \033[1;32m│\033[0m")
+        print("\033[1;32m└─────────────────────────────────────────────────────────┘\033[0m")
+        
+        # 设置5分钟倒计时
+        manual_time = 5 * 60  # 5分钟 = 300秒
+        start_time = time.time()
+        
+        # 显示进度条
+        bar_length = 40
+        try:
+            while time.time() - start_time < manual_time:
+                remaining = int(manual_time - (time.time() - start_time))
+                minutes = remaining // 60
+                seconds = remaining % 60
+                
+                # 计算进度条
+                elapsed = time.time() - start_time
+                progress = min(1.0, elapsed / manual_time)
+                bar_filled = int(bar_length * progress)
+                bar_empty = bar_length - bar_filled
+                
+                # 显示彩色进度条和倒计时
+                print(f"\r\033[1;34m手动操作倒计时: {minutes:02d}:{seconds:02d} [\033[1;32m{'█' * bar_filled}\033[1;30m{'░' * bar_empty}\033[1;34m] {int(progress*100)}%\033[0m", end="")
+                
+                # 每秒更新一次
+                await asyncio.sleep(1)
+        except KeyboardInterrupt:
+            # 用户可以按Ctrl+C跳过等待
+            print("\n\033[1;33m用户手动跳过等待\033[0m")
+        
+        print("\n\033[1;32m手动操作时间结束，恢复自动浏览\033[0m")
+        self.log("手动操作时间结束，恢复自动浏览", "INFO")
 
 async def main():
     # 显示美化的欢迎界面
