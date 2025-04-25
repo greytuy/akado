@@ -105,7 +105,8 @@ function Main {
 
         # 循环检测Cloudflare Tunnel服务状态8分钟
         # 测试选择3分钟
-        $endTime = (Get-Date).AddMinutes(3)
+        # 测试选择2分钟
+        $endTime = (Get-Date).AddMinutes(2)
         while ((Get-Date) -lt $endTime) {
             $tunnelService = Get-Service cloudflared
             if ($tunnelService.Status -ne 'Running') {
